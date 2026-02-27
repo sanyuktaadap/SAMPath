@@ -15,7 +15,8 @@ config = {
     },
     "model": {
         "type": 'vit_b',
-        "checkpoint": "/data07/shared/jzhang/result/weights/SAM/sam_vit_b_01ec64.pth",
+        # "checkpoint": "/data07/shared/jzhang/result/weights/SAM/sam_vit_b_01ec64.pth",
+        "checkpoint": "./SAMPath/model.ckpt",
         "freeze": {
             "image_encoder": True,
             "prompt_encoder": True,
@@ -36,7 +37,7 @@ config = {
         "iou_cof": 0.0625,
     },
     "dataset": {
-        "dataset_root": "/data07/shared/jzhang/data/segmentation/BCSS/patches/1024_Imagefolder/merged_dataset",
+        "dataset_root": "SAMPath/hari_BC/",
         "dataset_csv_path": "/data07/shared/jzhang/data/segmentation/BCSS/patches/1024_Imagefolder/cv.csv",
         "val_fold_id": 0,
         "num_classes": 6,
