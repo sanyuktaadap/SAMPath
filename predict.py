@@ -1,6 +1,9 @@
 import os
 from argparse import ArgumentParser
 
+from box.box import Box
+from box.box_list import BoxList
+
 import cv2
 import numpy as np
 import torch
@@ -56,7 +59,8 @@ def get_model(cfg, pretrained=None):
         no_sam=cfg.model.no_sam if "no_sam" in cfg.model else None
     )
     if pretrained is not None:
-        state_dict = torch.load(pretrained, map_location='cpu')['state_dict']
+        # state_dict = torch.load(pretrained, map_location='cpu')['state_dict']
+        state_dict = torch.load(pretrained, map_location='cpu', weights_only=False)['state_dict']
         state_dict = {k[len('model.'):]:v for k, v in state_dict.items() if k.startswith('model.')}
         msg = model.load_state_dict(state_dict, strict=False)
         print("Loading weights from %s got msg: %s" % (pretrained, msg))
@@ -133,8 +137,15 @@ def main(cfg, args):
     os.makedirs(args.output_dir, exist_ok=True)
     for f, pmask in zip(dataset.img_list, pred_masks):
         pmask = pmask.numpy().astype(np.uint8)
+        # Only plot Label 3 corresponding to Stroma
+        pmask[pmask == 3] = 255
+        pmask[pmask != 255] = 0
         out_f = os.path.join(args.output_dir, f[:-len(args.data_ext)] + "_mask.png")
+        # resize pmask to original image size
+        img = cv2.imread(os.path.join(args.input_dir, f))
+        pmask = cv2.resize(pmask, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
         cv2.imwrite(out_f, pmask)
+        print("Saved predicted mask to %s" % out_f)
 
 
 if __name__ == '__main__':
@@ -148,6 +159,8 @@ if __name__ == '__main__':
     parser.add_argument('--devices', type=lambda s: [int(item) for item in s.split(',')], default=[0])
     # parser.add_argument('--seed', type=int, default=42)
     args = parser.parse_args()
+
+    os.makedirs(args.output_dir, exist_ok=True)
 
     module = __import__(args.config, globals(), locals(), ['cfg'])
     cfg = module.cfg
