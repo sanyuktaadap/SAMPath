@@ -152,7 +152,8 @@ class PromptSAMLateFusion(nn.Module):
     ):
         super().__init__()
 
-        self.model = sam_model_registry[model_type](checkpoint=checkpoint)
+        self.model = sam_model_registry[model_type](checkpoint=checkpoint,
+                                                    num_multimask_outputs=num_classes)
         self.mask_HW = mask_HW
         self.feature_input = feature_input
 

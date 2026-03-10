@@ -1,4 +1,4 @@
-from box import Box
+from box.box import Box
 
 config = {
     "batch_size": 12,

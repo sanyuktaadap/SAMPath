@@ -6,6 +6,9 @@
 
 import torch
 
+from box.box import Box
+from box.box_list import BoxList
+
 from functools import partial
 
 from .modeling import ImageEncoderViT, MaskDecoder, PromptEncoder, Sam, TwoWayTransformer
@@ -34,13 +37,14 @@ def build_sam_vit_l(checkpoint=None):
     )
 
 
-def build_sam_vit_b(checkpoint=None):
+def build_sam_vit_b(checkpoint=None, num_multimask_outputs=3):
     return _build_sam(
         encoder_embed_dim=768,
         encoder_depth=12,
         encoder_num_heads=12,
         encoder_global_attn_indexes=[2, 5, 8, 11],
         checkpoint=checkpoint,
+        num_multimask_outputs=num_multimask_outputs,
     )
 
 
@@ -58,6 +62,7 @@ def _build_sam(
     encoder_num_heads,
     encoder_global_attn_indexes,
     checkpoint=None,
+    num_multimask_outputs=3,
 ):
     prompt_embed_dim = 256
     image_size = 1024
@@ -85,7 +90,7 @@ def _build_sam(
             mask_in_chans=16,
         ),
         mask_decoder=MaskDecoder(
-            num_multimask_outputs=3,
+            num_multimask_outputs=num_multimask_outputs,
             transformer=TwoWayTransformer(
                 depth=2,
                 embedding_dim=prompt_embed_dim,
@@ -101,7 +106,17 @@ def _build_sam(
     )
     sam.eval()
     if checkpoint is not None:
-        with open(checkpoint, "rb") as f:
-            state_dict = torch.load(f)
-        sam.load_state_dict(state_dict)
+        # with open(checkpoint, "rb") as f:
+        with torch.serialization.safe_globals([Box, BoxList]):
+            full_dict = torch.load(checkpoint, map_location='cpu', weights_only=False)
+
+        # Create a new dict stripping the 'model.model.' prefix
+        state_dict = {}
+        for k, v in full_dict.items():
+            # This removes 'model.model.' if it exists at the start of the key
+            new_key = k.replace("model.model.", "")
+            state_dict[new_key] = v
+        sam.load_state_dict(state_dict, strict=False)
+        sam.to('cuda:0')
+
     return sam
